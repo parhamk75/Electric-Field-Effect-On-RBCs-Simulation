@@ -11,6 +11,7 @@ import numpy as np
 #%% Global Computation Parameter
 
 Ts          = 1e-3                      # Infinitesimal time step duration in 's' (Sampling Time)
+D_Ca_o      = 0.0024                    # Extracellular Ca2+ density
 
 #%% Dimention
 
@@ -22,6 +23,7 @@ Vol         = d ** 3                    # Cell volume in 'm^3'
 
 D_Ca_i_0    = 0.0024/np.exp(270/26.7)   # Initial Ca2+ intracellular density in 'mol/lit'
 
+
 #%% Constant
 
 z_Ca        = 2                         # Ca2+ electric charge
@@ -32,7 +34,6 @@ T           = 300                       # Temperature in 'K' @27°C
 #%% Derived Coefficient
 
 RT_F        = (R*T)/F                   # in 'V' @27°C
-a_d         = A/(F* z_Ca* Vol)          # [Used in Ca2+ Density Equation]
 
 
 #%% Test
