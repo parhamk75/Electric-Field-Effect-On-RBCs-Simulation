@@ -122,6 +122,26 @@ def m_Calc(tau_curr= 0, m_prev= 0, m_inf_curr= 0):
     
     return ((1 - (prms.Ts/tau_curr))* m_prev) + ((prms.Ts/tau_curr)* m_inf_curr)
     
+#%% Calcium Pump Current Calculating Function
+
+def Ca_Pump_Current_Calc(D_Ca_i= 0):
+    """
+        Calculates the Transmembrane Ca2+ Current through the Ca2+ Pumps
+        - D_Ca_i:
+            [Ca2+_i][n]:
+            in ????
+            #TODO: What is the unit of Density in this relation
+        - returns:
+            Ip_Ca[n]
+            in 'μmol/(s.cm2)'
+    """
+    Fmax    = 5e-6          # in 'μmol/(s.cm2)'
+    H       = 0.75
+    Km      = 260
+    alpha   = Km / D_Ca_i
+    
+    return Fmax / ( 1 + (alpha**H) )
+
 #%% Test
 
 if __name__=='__main__':
