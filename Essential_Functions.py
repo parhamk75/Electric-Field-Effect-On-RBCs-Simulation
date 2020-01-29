@@ -7,8 +7,11 @@ Created on Sat Jan 25 18:54:55 2020
 #%% Import
 import Parameters as prms
 import numpy      as np
-from Converters import mol_m3_to_mol_lit
 
+from Converters import mol_m3_to_mol_lit
+from Converters import pA_cm2_to_A_m2
+from Converters import umol_s_to_pA
+from Converters import uV_to_V
 
 #%% Calcium Intracellular Density Calculating Function
 
@@ -22,14 +25,15 @@ def Ca_Dens_Calc(D_Ca_i_prev= 0, I_Ca_curr= 0):
             in 'mol/lit'
         - I_Ca_curr:
             I_Ca[n]
-            in 'A/m^2'
+            in 'pA/Cm^2'
         - returns:
             [Ca2+_i][n]
             in 'mol/m3'
     """
+    I_Ca    = pA_cm2_to_A_m2( I_Ca_curr )
     a_d     = prms.A/(prms.F* prms.z_Ca* prms.Vol)
     
-    return D_Ca_i_prev + (a_d* prms.Ts* I_Ca_curr)
+    return D_Ca_i_prev + (a_d* prms.Ts* I_Ca)
 
 #%% Transmembrane Ca2+ Current through Ca2+ Channel Calculating Function
 
@@ -89,7 +93,7 @@ def b_m_Calc(V_m= 0):
     
 def tau_Calc(a_m= 0, b_m= 0):
     """
-        Calculates the beta
+        Calculates the tau
         
         - a_m:
             alpha[n]
@@ -103,14 +107,17 @@ def tau_Calc(a_m= 0, b_m= 0):
     """
     return 1 / (a_m + b_m)
 
-def m_Inf_Calc(V_m= 0, D_Ca_i= 0, a_m= 0, b_m= 0):
+def m_Inf_Calc(V_m= 0, a_m= 0, b_m= 0):
     """
     """
-    c_m = 1e3 / ( (4* 0.0777* 92.16* 1e8) / (2563.2) )
+    c_m     = 1e3 / ( (4* 0.0777* 92.16* 1e8) / (2563.2) )
     ZF_RT   = 2* 37.45318352                        # (Zp*F)/(R*T)
     
+    Semi_D_Ca_i_0   = prms.D_Ca_i_0
+    Semi_D_Ca_o     = prms.D_Ca_o
+    
     tmp_var_1 = np.exp(ZF_RT* V_m)
-    tmp_var_2 = (1 - tmp_var_1) / (prms.D_Ca_o - (D_Ca_i* tmp_var_1) )
+    tmp_var_2 = (1 - tmp_var_1) / (Semi_D_Ca_o - (Semi_D_Ca_i_0* tmp_var_1) )
     tmp_var_3 = ( V_m - 0.135 ) / V_m
     tmp_var_4 = a_m / ( a_m + b_m )
     
@@ -127,10 +134,11 @@ def m_Calc(tau_curr= 0, m_prev= 0, m_inf_curr= 0):
 def Ca_Pump_Current_Calc(D_Ca_i= 0):
     """
         Calculates the Transmembrane Ca2+ Current through the Ca2+ Pumps
+        
         - D_Ca_i:
             [Ca2+_i][n]:
             in ????
-            #TODO: What is the unit of Density in this relation
+            #FIXME: What is the unit of Density in this relation
         - returns:
             Ip_Ca[n]
             in 'μmol/(s.cm2)'
@@ -142,6 +150,94 @@ def Ca_Pump_Current_Calc(D_Ca_i= 0):
     
     return Fmax / ( 1 + (alpha**H) )
 
+#%% Ca2+ Total Transmembrane Current Calculating Function
+    
+def Ca_Total_Current_Calc(Ip_Ca= 0, Ich_Ca= 0):
+    """
+        Calculates the Total Ca2+ Transmembrane Current Passing through the Ca2+ Channel and Pump
+        
+        - Ip_Ca:
+            Ip_Ca[n]\n
+            in 'μmol/(s.cm2)'
+        - Ich_Ca:
+            Ich_Ca[n]\n
+            in 'pA/cm^2'
+        - returns:
+            I_Ca[n]\n
+            in 'pA/Cm^2'
+    """
+    
+    Ip_Ca_converted = umol_s_to_pA(Ip_Ca)
+    
+    return Ich_Ca + Ip_Ca_converted
+
+#%% Total Transmembrane Current Calculating Function
+
+def Total_Transmem_Current_Calc(*I):
+    """
+    """
+    return np.sum(I)
+
+#%% Stimulation Transmembrane Voltage Calculating Function
+    
+def Stim_Transmem_Voltage_Calc(n= 0, A_S= 1e-3, f_S= 50, T_ES= 1e-3, T_BS= 0):
+    """
+        Calculates the n'th Value of Stimulation
+        
+        - n:
+            n
+        - A_S:
+            A_S
+            in 'V'
+        - f_S:
+            f_S
+            in 'Hz'
+        - T_ES:
+            T_ES
+            in 's'
+        - T_BS:
+            T_BS
+            in 's'
+        - returns:
+            V_S[n]
+            in 'V'
+    """
+    
+    if n* prms.Ts < T_BS:
+        return 0
+    if n* prms.Ts > T_ES:
+        return 0
+    
+    return A_S* np.sin(2* np.pi* f_S* n* prms.Ts)
+
+#%% Transmembrane Voltage Caused by Accumulation/Exodus of Ca2+ ions (Capacitive Voltage) Calculating Function
+
+def Cap_Transmem_Voltage_Calc(V_C_Prev= 0, I_m_Curr= 0):
+    """
+        Calculates the Transmembrane Voltage Caused by Accumulation/Exodus of Ca2+ ions (Capacitive Voltage)
+        
+        - V_C_Prev:
+            V_C[n-1]
+            in 'V'
+        - I_m_Curr:
+            Im[n]
+            in 'pA/Cm^2'
+        - returns:
+            V_C[n]
+            in 'V'
+    """
+    V_C_Curr_uV = ( -1* (prms.Ts/prms.Cap)* I_m_Curr) + V_C_Prev
+    
+    return uV_to_V(V_C_Curr_uV)
+
+#%% Transmembrane Voltage Calculating Function
+
+def Transmem_Voltage_Calc(Vs= 0, Vc= 0, Vr= prms.V_r):
+    """
+    """
+    
+    return Vc + Vs + Vr
+
 #%% Test
 
 if __name__=='__main__':
@@ -152,7 +248,7 @@ if __name__=='__main__':
     import matplotlib.pyplot as plt
     Ich_Ca = []
     m = np.linspace(0, 1, 100)
-    Vm = np.linspace(-60e-3, 250e-3, 6)
+    Vm = np.linspace(105e-3, 106e-3, 6)
     
     for j in Vm:
         for i in m:
@@ -165,3 +261,5 @@ if __name__=='__main__':
     plt.hlines(0,-0.1,1.1, colors='fuchsia')
     plt.show()
     
+    # --> Total_Transmem_Current_Calc()
+    print( Total_Transmem_Current_Calc(3,4,5,6,7) )

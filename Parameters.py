@@ -12,6 +12,9 @@ import numpy as np
 
 Ts          = 1e-3                      # Infinitesimal time step duration in 's' (Sampling Time)
 D_Ca_o      = 0.0024                    # Extracellular Ca2+ density
+Cap         = 1                         # Membrane Capacitance in 'μF/Cm^2'
+V_r         = 105.84218421842183        # Rest Voltage in 'mV' with error 1.2781000721570033e-10 ( (Ip + Tch)/Ip )
+m_inf_r     = 0.4522305223052231        # Rest m_inf
 
 #%% Dimention
 
@@ -22,7 +25,6 @@ Vol         = d ** 3                    # Cell volume in 'm^3'
 #%% Initial Value
 
 D_Ca_i_0    = 0.0024/np.exp(270/26.7)   # Initial Ca2+ intracellular density in 'mol/lit'
-
 
 #%% Constant
 
